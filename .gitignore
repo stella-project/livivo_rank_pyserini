@@ -1,0 +1,6 @@
+data/livivo/*
+__pycache__/
+.idea/
+indexes/
+convert/
+
