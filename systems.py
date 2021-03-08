@@ -49,8 +49,8 @@ class Ranker(object):
         JIndexCollection.main(args)
         self.searcher = SimpleSearcher('indexes/livivo')
 
-    def rank_publications(self, query, page, rpp):
-
+    def rank_publications(self, query, page, rpp): 
+        hits = []
         itemlist = []
 
         if query is not None:
@@ -62,7 +62,6 @@ class Ranker(object):
 
             if self.searcher is not None:
                 hits = self.searcher.search(query, k=(page+1)*rpp)
-
                 itemlist = [hit.docid for hit in hits[page*rpp:(page+1)*rpp]]
 
         return {
@@ -70,7 +69,7 @@ class Ranker(object):
             'rpp': rpp,
             'query': query,
             'itemlist': itemlist,
-            'num_found': len(itemlist)
+            'num_found': len(hits)
         }
 
 
