@@ -2,6 +2,19 @@ import os
 from pyserini.index.__main__ import JIndexCollection
 from pyserini.search import SimpleSearcher
 import jsonlines
+from multiprocessing import Pool
+import shutil
+
+CHUNKSIZE = 100000000
+
+ARGS = ["-collection", "JsonCollection",
+        "-generator", "DefaultLuceneDocumentGenerator",
+        "-threads", "6",
+        "-input", "./convert",
+        "-index", "./indexes/livivo",
+        "-storePositions",
+        "-storeDocvectors",
+        "-storeRaw"]
 
 
 class Ranker(object):
@@ -9,45 +22,68 @@ class Ranker(object):
     def __init__(self):
         self.idx = None
 
+    def _make_chuncks(self, dir):
+        for file in os.listdir(dir):
+            if file.endswith(".jsonl"):
+                with open(os.path.join(dir, file), 'r') as f:
+                    cnt = 0
+                    while True:
+                        lines = f.readlines(CHUNKSIZE)
+                        if not lines:
+                            break
+                        with open(''.join(['./chunks/', file[:-6], '_', str(cnt), '.jsonl']), 'w') as _chunk_out:
+                            for line in lines:
+                                _chunk_out.write(line)
+                        cnt += 1
+
+    def _convert_chunks(self, file):
+        with jsonlines.open(os.path.join('./convert/', file), mode='w') as writer:
+            with jsonlines.open(os.path.join("./chunks", file)) as reader:
+                for obj in reader:
+                    title = obj.get('TITLE') or ''
+                    title = title[0] if type(title) is list else title
+
+                    abstract = obj.get('ABSTRACT') or ''
+                    abstract = abstract[0] if type(abstract) is list else abstract
+
+                    source = obj.get('SOURCE') or ''
+                    source = source[0] if type(source) is list else source
+
+                    author = obj.get('AUTHOR') or ''
+                    author = ' '.join(author) if type(author) is list else author
+
+                    mesh = obj.get('MESH') or ''
+                    mesh = ' '.join(mesh) if type(mesh) is list else mesh
+
+                    try:
+                        doc = {'id': obj.get('DBRECORDID'),
+                               'contents': ' '.join([title,
+                                                     abstract,
+                                                     source,
+                                                     author,
+                                                     mesh])}
+                        writer.write(doc)
+                    except Exception as e:
+                        print(e)
+
+    def _mkdir(self, dir):
+        try:
+            os.mkdir(dir)
+        except OSError as error:
+            print(error)
+
     def index(self):
-
-        try:
-            os.mkdir('./convert/')
-        except OSError as error:
-            print(error)
-
-        with jsonlines.open('./convert/output.jsonl', mode='w') as writer:
-            for file in os.listdir("./data/livivo/documents/"):
-                if file.endswith(".jsonl"):
-                    with jsonlines.open(os.path.join("./data/livivo/documents", file)) as reader:
-                        for obj in reader:
-                            title = obj.get('TITLE') or ''
-                            title = title[0] if type(title) is list else title
-                            abstract = obj.get('ABSTRACT') or ''
-                            abstract = abstract[0] if type(abstract) is list else abstract
-                            try:
-                                doc = {'id': obj.get('DBRECORDID'),
-                                       'contents': ' '.join([title, abstract])}
-                                writer.write(doc)
-                            except Exception as e:
-                                print(e)
-
-        try:
-            os.mkdir('./indexes/')
-        except OSError as error:
-            print(error)
-
-        args = ["-collection", "JsonCollection",
-                "-generator", "DefaultLuceneDocumentGenerator",
-                "-threads", "1",
-                "-input", "./convert",
-                "-index", "./indexes/livivo",
-                "-storePositions",
-                "-storeDocvectors",
-                "-storeRaw"]
-
-        JIndexCollection.main(args)
+        self._mkdir('./convert/')
+        self._mkdir('./chunks/')
+        self._mkdir('./indexes/')
+        self._make_chuncks("./data/livivo/documents/")
+        p = Pool()
+        p.map(self._convert_chunks, os.listdir("./chunks/"))
+        p.close()
+        shutil.rmtree('./chunks')
+        JIndexCollection.main(ARGS)
         self.searcher = SimpleSearcher('indexes/livivo')
+        shutil.rmtree('./convert')
 
     def rank_publications(self, query, page, rpp): 
         hits = []
@@ -61,7 +97,7 @@ class Ranker(object):
                     print('No index available: ', e)
 
             if self.searcher is not None:
-                hits = self.searcher.search(query, k=(page+1)*rpp)
+                hits = self.searcher.search(query, k=10000000)
                 itemlist = [hit.docid for hit in hits[page*rpp:(page+1)*rpp]]
 
         return {
