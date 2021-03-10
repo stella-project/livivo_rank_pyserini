@@ -11,7 +11,7 @@ ARGS = ["-collection", "JsonCollection",
         "-generator", "DefaultLuceneDocumentGenerator",
         "-threads", "6",
         "-input", "./convert",
-        "-index", "./indexes/livivo",
+        "-index", "./index/livivo",
         "-storePositions",
         "-storeDocvectors",
         "-storeRaw"]
@@ -31,14 +31,14 @@ class Ranker(object):
                         lines = f.readlines(CHUNKSIZE)
                         if not lines:
                             break
-                        with open(''.join(['./chunks/', file[:-6], '_', str(cnt), '.jsonl']), 'w') as _chunk_out:
+                        with open(''.join(['./index/chunks/', file[:-6], '_', str(cnt), '.jsonl']), 'w') as _chunk_out:
                             for line in lines:
                                 _chunk_out.write(line)
                         cnt += 1
 
     def _convert_chunks(self, file):
-        with jsonlines.open(os.path.join('./convert/', file), mode='w') as writer:
-            with jsonlines.open(os.path.join("./chunks", file)) as reader:
+        with jsonlines.open(os.path.join('./index/convert/', file), mode='w') as writer:
+            with jsonlines.open(os.path.join("./index/chunks", file)) as reader:
                 for obj in reader:
                     title = obj.get('TITLE') or ''
                     title = title[0] if type(title) is list else title
@@ -73,17 +73,17 @@ class Ranker(object):
             print(error)
 
     def index(self):
-        self._mkdir('./convert/')
-        self._mkdir('./chunks/')
-        self._mkdir('./indexes/')
+        self._mkdir('./index/')
+        self._mkdir('./index/convert/')
+        self._mkdir('./index/chunks/')
         self._make_chuncks("./data/livivo/documents/")
         p = Pool()
-        p.map(self._convert_chunks, os.listdir("./chunks/"))
+        p.map(self._convert_chunks, os.listdir("./index/chunks/"))
         p.close()
-        shutil.rmtree('./chunks')
+        shutil.rmtree('./index/chunks')
         JIndexCollection.main(ARGS)
-        self.searcher = SimpleSearcher('indexes/livivo')
-        shutil.rmtree('./convert')
+        self.searcher = SimpleSearcher('index/livivo')
+        shutil.rmtree('./index/convert')
 
     def rank_publications(self, query, page, rpp): 
         hits = []
@@ -92,7 +92,7 @@ class Ranker(object):
         if query is not None:
             if self.idx is None:
                 try:
-                    self.searcher = SimpleSearcher('indexes/livivo')
+                    self.searcher = SimpleSearcher('index/livivo')
                 except Exception as e:
                     print('No index available: ', e)
 
