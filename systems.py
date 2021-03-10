@@ -97,7 +97,7 @@ class Ranker(object):
                     print('No index available: ', e)
 
             if self.searcher is not None:
-                hits = self.searcher.search(query, k=10000000)
+                hits = self.searcher.search(query, k=100)
                 itemlist = [hit.docid for hit in hits[page*rpp:(page+1)*rpp]]
 
         return {
