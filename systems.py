@@ -10,8 +10,8 @@ CHUNKSIZE = 100000000
 ARGS = ["-collection", "JsonCollection",
         "-generator", "DefaultLuceneDocumentGenerator",
         "-threads", "6",
-        "-input", "./convert",
-        "-index", "./index/livivo",
+        "-input", "./convert/",
+        "-index", "./index/",
         "-storePositions",
         "-storeDocvectors",
         "-storeRaw"]
@@ -38,7 +38,7 @@ class Ranker(object):
 
     def _convert_chunks(self, file):
         with jsonlines.open(os.path.join('./index/convert/', file), mode='w') as writer:
-            with jsonlines.open(os.path.join("./index/chunks", file)) as reader:
+            with jsonlines.open(os.path.join("./index/chunks/", file)) as reader:
                 for obj in reader:
                     title = obj.get('TITLE') or ''
                     title = title[0] if type(title) is list else title
@@ -82,8 +82,8 @@ class Ranker(object):
         p.close()
         shutil.rmtree('./index/chunks')
         JIndexCollection.main(ARGS)
-        self.searcher = SimpleSearcher('index/livivo')
-        shutil.rmtree('./index/convert')
+        self.searcher = SimpleSearcher('./index/')
+        shutil.rmtree('./index/convert/')
 
     def rank_publications(self, query, page, rpp): 
         hits = []
@@ -92,7 +92,7 @@ class Ranker(object):
         if query is not None:
             if self.idx is None:
                 try:
-                    self.searcher = SimpleSearcher('index/livivo')
+                    self.searcher = SimpleSearcher('./index/')
                 except Exception as e:
                     print('No index available: ', e)
 
