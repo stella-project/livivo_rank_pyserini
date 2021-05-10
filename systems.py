@@ -21,6 +21,7 @@ class Ranker(object):
 
     def __init__(self):
         self.idx = None
+        self.searcher = None
 
     def _make_chuncks(self, dir):
         for file in os.listdir(dir):
