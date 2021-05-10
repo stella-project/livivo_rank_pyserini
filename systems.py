@@ -10,7 +10,7 @@ CHUNKSIZE = 100000000
 ARGS = ["-collection", "JsonCollection",
         "-generator", "DefaultLuceneDocumentGenerator",
         "-threads", "6",
-        "-input", "./convert/",
+        "-input", "./index/convert/",
         "-index", "./index/",
         "-storePositions",
         "-storeDocvectors",
